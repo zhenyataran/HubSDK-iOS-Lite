@@ -17,7 +17,7 @@ let package = Package(
         .library(name: "HubIntegrationCore", targets: ["HubIntegrationCore"])
     ],
     dependencies: [
-        .package(url: "https://github.com/adaptyteam/AdaptySDK-iOS", from: "3.15.7"),
+        .package(url: "https://github.com/adaptyteam/AdaptySDK-iOS", exact: "3.15.7"),
         .package(url: "https://github.com/AppsFlyerSDK/AppsFlyerFramework", from: "6.15.0"),
         .package(url: "https://github.com/googleads/swift-package-manager-google-mobile-ads.git", from: "12.14.0"),
         .package(url: "https://github.com/facebook/facebook-ios-sdk", from: "18.0.1"),
