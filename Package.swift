@@ -14,7 +14,8 @@ let package = Package(
         .library(name: "HubFacebook", targets: ["HubFacebook"]),
         .library(name: "HubFirebase", targets: ["HubFirebase"]),
         .library(name: "HubAnalytics", targets: ["HubAnalytics"]),
-        .library(name: "HubIntegrationCore", targets: ["HubIntegrationCore"])
+        .library(name: "HubIntegrationCore", targets: ["HubIntegrationCore"]),
+        .library(name: "HubFirebaseRemoteConfig", targets: ["HubFirebaseRemoteConfig"])
     ],
     dependencies: [
         .package(url: "https://github.com/adaptyteam/AdaptySDK-iOS", exact: "3.15.7"),
@@ -83,6 +84,15 @@ let package = Package(
             ),
         
             .target(name: "HubIntegrationCore"),
+
+            .target(
+                name: "HubFirebaseRemoteConfig",
+                dependencies: [
+                    .product(name: "FirebaseRemoteConfig", package: "firebase-ios-sdk"),
+                    .target(name: "HubIntegrationCore"),
+                    .target(name: "HubSDKCore")
+                ]
+            ),
 
         // MARK: - Tests
 
