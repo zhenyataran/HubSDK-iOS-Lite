@@ -15,27 +15,31 @@ public final class PlacementBag: @unchecked Sendable {
     
     // MARK: - Initialization
     
-    public init(_ identifiers: [String], locale: String) async throws {
+    public init(_ identifiers: [String], locale: String) async {
         self.locale = locale
         
         guard !identifiers.isEmpty else { return }
         
-        let loaded = try await Self.fetchEntries(for: identifiers, locale: locale)
-        
-        addEntries(loaded, ids: identifiers)
+        let loaded = await Self.fetchEntries(for: identifiers, locale: locale)
+
+        addEntries(loaded, ids: loaded.map(\.placementId))
     }
-    
+
     // MARK: - Loading
-    
+
+    /// Loads the given placements, skipping ones already loaded.
+    ///
+    /// A placement that fails to fetch (e.g. not yet configured in the dashboard)
+    /// is skipped rather than aborting the others — each placement is independent.
     @discardableResult
-    public func load(_ identifiers: [String]) async throws -> [PlacementEntry] {
+    public func load(_ identifiers: [String]) async -> [PlacementEntry] {
         let newIds = filterNewIds(identifiers)
         guard !newIds.isEmpty else { return [] }
-        
-        let loaded = try await Self.fetchEntries(for: newIds, locale: locale)
-        
-        addEntries(loaded, ids: newIds)
-        
+
+        let loaded = await Self.fetchEntries(for: newIds, locale: locale)
+
+        addEntries(loaded, ids: loaded.map(\.placementId))
+
         return loaded
     }
     
@@ -43,13 +47,13 @@ public final class PlacementBag: @unchecked Sendable {
         if let existing = entry(for: identifier) {
             return existing
         }
-        
-        let loaded = try await load([identifier])
-        
+
+        let loaded = await load([identifier])
+
         guard let entry = loaded.first else {
             throw HubSDKError.placementNotFound(identifier)
         }
-        
+
         return entry
     }
     
@@ -107,43 +111,47 @@ public final class PlacementBag: @unchecked Sendable {
     }
     
     // MARK: - Static Fetch (No Lock)
-    
-    private static func fetchEntries(for identifiers: [String], locale: String) async throws -> [PlacementEntry] {
+
+    /// Fetches each placement independently — a placement that isn't configured yet
+    /// (or otherwise fails to fetch) is logged and skipped rather than aborting the rest.
+    private static func fetchEntries(for identifiers: [String], locale: String) async -> [PlacementEntry] {
         var result: [PlacementEntry] = []
         result.reserveCapacity(identifiers.count)
-        
+
         for id in identifiers {
-            let flow = try await Adapty.getFlow(placementId: id)
-            let products = try await Adapty.getPaywallProducts(flow: flow)
+            do {
+                let flow = try await Adapty.getFlow(placementId: id)
+                let products = try await Adapty.getPaywallProducts(flow: flow)
 
-            // Flow carries per-locale remote configs; pick the requested locale, fall back to the first one.
-            let remoteConfig = flow.remoteConfigs.first { $0.locale.lowercased() == locale.lowercased() }
-                ?? flow.remoteConfigs.first
-            let remoteConfigData = remoteConfig?.jsonString.data(using: .utf8)
+                // Flow carries per-locale remote configs; pick the requested locale, fall back to the first one.
+                let remoteConfig = flow.remoteConfigs.first { $0.locale.lowercased() == locale.lowercased() }
+                    ?? flow.remoteConfigs.first
+                let remoteConfigData = remoteConfig?.jsonString.data(using: .utf8)
 
-            let viewType: AdaptyPaywallViewType = {
-                if flow.hasViewConfiguration {
-                    return .builder
-                }
+                let viewType: AdaptyPaywallViewType = {
+                    if flow.hasViewConfiguration {
+                        return .builder
+                    }
 
-                let identifier = (remoteConfig?.dictionary?["identifier"] as? String)
-                    ?? flow.name.components(separatedBy: "-").first?.lowercased()
-                    ?? ""
+                    let identifier = (remoteConfig?.dictionary?["identifier"] as? String)
+                        ?? flow.name.components(separatedBy: "-").first?.lowercased()
+                        ?? ""
 
-                return .local(identifier)
-            }()
+                    return .local(identifier)
+                }()
 
-            let entry = PlacementEntry(
-                placementId: id,
-                identifier: viewType,
-                flow: flow,
-                products: products,
-                remoteConfigData: remoteConfigData
-            )
-
-            result.append(entry)
+                result.append(PlacementEntry(
+                    placementId: id,
+                    identifier: viewType,
+                    flow: flow,
+                    products: products,
+                    remoteConfigData: remoteConfigData
+                ))
+            } catch {
+                HubSDKError.buildPlacementEntryFailed(error).log()
+            }
         }
-        
+
         return result
     }
 }

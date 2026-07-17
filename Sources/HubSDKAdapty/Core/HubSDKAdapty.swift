@@ -141,7 +141,7 @@ internal actor HubSDKAdapty {
             
             await setFallback(config.fallbackName)
             
-            let placementBag = try await PlacementBag(
+            let placementBag = await PlacementBag(
                 config.placementIdentifers,
                 locale: config.languageCode
             )

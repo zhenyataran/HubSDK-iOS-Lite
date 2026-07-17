@@ -273,7 +273,7 @@ extension HubSDKAdapty {
     /// - Throws: `HubSDKError.notInitialized` if SDK is not initialized.
     public func loadPlacements(_ identifiers: [String]) async throws -> [PlacementEntry] {
         let (_, placementBag) = try ensureReady()
-        return try await placementBag.load(identifiers)
+        return await placementBag.load(identifiers)
     }
     
     /// Retrieves a placement with optional lazy loading.
