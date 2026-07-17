@@ -184,7 +184,7 @@ func showPaywallWithCustomAssets(from vc: UIViewController) {
 
         if let videoURL = Bundle.main.url(forResource: "hero_video", withExtension: "mp4"),
            let preview = UIImage(named: "hero_video") {
-            assets["hero_video"] = .video(.file(url: videoURL, preview: .uiImage(value: preview)))
+            assets["hero_video"] = .video(.file(url: videoURL, preview: .uiImage(value: preview), resolution: nil))
         }
 
         try await HubPaywallCoordinator.show(

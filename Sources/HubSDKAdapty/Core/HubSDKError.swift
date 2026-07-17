@@ -48,15 +48,6 @@ public enum HubSDKError: Error {
     // Paywall erros
     case localPaywallProviderNotSet
     case localPaywallNotFound(String)
-    
-    // Onboarding errors
-    case onboardingFetchFailed(placementId: String, underlyingError: Error)
-    
-    /// The UI configuration could not be created from the onboarding data.
-    case onboardingConfigurationFailed(placementId: String, underlyingError: Error)
-    
-    /// No onboarding is associated with the given placement.
-    case notAvailable(placementId: String)
 }
 
 // MARK: - LocalizedError
@@ -159,12 +150,6 @@ extension HubSDKError: LocalizedError {
             return "Local paywall is not set"
         case .localPaywallNotFound(let id):
             return "Local paywall is not found with id: \(id)"
-        case .onboardingFetchFailed(placementId: let placementId, underlyingError: let underlyingError):
-            return "Failed fetch adapty onboarding on: \(placementId) with \(underlyingError)"
-        case .onboardingConfigurationFailed(placementId: let placementId, underlyingError: let underlyingError):
-            return "Failed configuration adapty onboarding on: \(placementId) with \(underlyingError)"
-        case .notAvailable(placementId: let placementId):
-            return "BDUI adapty onboarding is not available"
         }
     }
     
@@ -267,11 +252,6 @@ extension HubSDKError {
         case .invalidState: return 901
         case .localPaywallProviderNotSet: return 902
         case .localPaywallNotFound: return 903
-            
-        // 1000-1099: Onboarding erros
-        case .onboardingFetchFailed: return 1001
-        case .onboardingConfigurationFailed: return 1002
-        case .notAvailable: return 1003
         }
     }
 }

@@ -86,7 +86,7 @@ extension AdaptyPaywallProduct {
     /// - Returns: A formatted price string (e.g., "$9.99").
     public func descriptionPrice(multiplicatorValue: Double = 1.0) -> String {
         let currencySymbol = priceLocale.currencySymbol ?? ""
-        let price = sk2Product?.price.doubleValue ?? 0
+        let price = skProduct.price.doubleValue
         return String(format: "\(currencySymbol)%.2f", price * multiplicatorValue)
     }
     
@@ -99,7 +99,7 @@ extension AdaptyPaywallProduct {
     ///   period name based on the unit count. Defaults to `false`.
     /// - Returns: A period description string (e.g., "month", "year").
     public func descriptionPeriod(isAdaptiveName: Bool = false) -> String {
-        guard let subscription = sk2Product?.subscription else {
+        guard let subscription = skProduct.subscription else {
             return ""
         }
 

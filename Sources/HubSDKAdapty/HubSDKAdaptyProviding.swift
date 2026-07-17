@@ -8,7 +8,7 @@ import UIKit
 /// A protocol that defines the interface for subscription management and paywall operations.
 ///
 /// Use this protocol to validate subscriptions, retrieve placements and remote configurations,
-/// process purchases, restore previous transactions, and present onboardings.
+/// process purchases, and restore previous transactions.
 public protocol HubSDKAdaptyProviding: Sendable {
     
     // MARK: State
@@ -30,6 +30,10 @@ public protocol HubSDKAdaptyProviding: Sendable {
     ///
     /// Returns `false` if the SDK is not initialized.
     var hasActiveSubscription: Bool { get }
+
+    /// The language code from the SDK configuration used for placement fetching
+    /// and flow localization, or `nil` if the SDK is not initialized.
+    var languageCode: String? { get }
     
     // MARK: Subscription Validation
     
@@ -141,7 +145,7 @@ public protocol HubSDKAdaptyProviding: Sendable {
     /// - Returns: The purchase result containing transaction details.
     /// - Throws: `HubSDKError.notInitialized` if SDK is not ready.
     /// - Throws: `HubSDKError.purchaseFailed` if the purchase fails.
-    func purchase(with product: any AdaptyPaywallProduct, trackEvent: Bool) async throws -> AdaptyPurchaseResult
+    func purchase(with product: AdaptyPaywallProduct, trackEvent: Bool) async throws -> AdaptyPurchaseResult
     
     /// Restores previously purchased subscriptions.
     ///
@@ -158,102 +162,19 @@ public protocol HubSDKAdaptyProviding: Sendable {
     
     // MARK: Analytics
     
-    /// Logs a paywall impression for the specified placement.
+    /// Logs a flow (paywall) impression for the specified placement.
     ///
-    /// Call this method when displaying a paywall to track conversion metrics.
+    /// Call this method when displaying a flow to track conversion metrics.
     ///
     /// - Parameter placementId: The unique identifier of the placement being shown.
-    func logPaywall(from placementId: String) async
-    
-    /// Logs a paywall impression for the specified paywall.
+    func logFlow(from placementId: String) async
+
+    /// Logs a flow (paywall) impression for the specified flow.
     ///
-    /// Use this overload when you have direct access to the paywall object.
+    /// Use this overload when you have direct access to the flow object.
     ///
-    /// - Parameter paywall: The paywall being shown.
-    func logPaywall(with paywall: AdaptyPaywall) async
-    
-    // MARK: Onboarding (Async)
-    
-    /// Fetches an onboarding and its UI configuration for the given placement.
-    ///
-    /// Performs two sequential calls:
-    /// 1. `Adapty.getOnboarding(placementId:)` to fetch the onboarding data.
-    /// 2. `AdaptyUI.getOnboardingConfiguration(forOnboarding:)` to prepare the UI config.
-    ///
-    /// For best performance, call this early to give images time to download.
-    ///
-    /// - Parameters:
-    ///   - placementId: The placement identifier from the Adapty Dashboard.
-    ///   - locale: Optional locale code (e.g., `"en"`, `"pt-br"`). Defaults to SDK config's `languageCode`.
-    /// - Returns: An `OnboardingEntry` containing the onboarding and its configuration.
-    /// - Throws: `HubSDKError.notInitialized` if SDK is not ready.
-    /// - Throws: `HubSDKError.onboardingFetchFailed` if fetching fails.
-    /// - Throws: `HubSDKError.onboardingConfigurationFailed` if UI config creation fails.
-    func onboardingEntry(
-        for placementId: String,
-        locale: String?
-    ) async throws -> OnboardingEntry
-    
-    /// Fetches an onboarding for the default audience (All Users).
-    ///
-    /// Use this for faster loading when personalization is not needed.
-    /// See Adapty docs for limitations of `getOnboardingForDefaultAudience`:
-    /// - May create backward-compatibility issues across app versions.
-    /// - No personalization — only shows content for "All Users" audience.
-    ///
-    /// - Parameters:
-    ///   - placementId: The placement identifier.
-    ///   - locale: Optional locale code. Defaults to SDK config's `languageCode`.
-    /// - Returns: An `OnboardingEntry` for the default audience.
-    /// - Throws: `HubSDKError.notInitialized` if SDK is not ready.
-    /// - Throws: `HubSDKError.onboardingFetchFailed` if fetching fails.
-    func onboardingEntryForDefaultAudience(
-        for placementId: String,
-        locale: String?
-    ) async throws -> OnboardingEntry
-    
-    // MARK: Onboarding Presentation (UIKit)
-    
-    /// Creates an `AdaptyOnboardingController` ready for presentation.
-    ///
-    /// This is a convenience method that combines fetching and controller creation.
-    ///
-    /// - Parameters:
-    ///   - placementId: The placement identifier.
-    ///   - delegate: The delegate to receive onboarding events.
-    ///   - locale: Optional locale code.
-    /// - Returns: A configured `AdaptyOnboardingController`.
-    /// - Throws: `HubSDKError.notInitialized` if SDK is not ready.
-    /// - Throws: `HubSDKError.onboardingFetchFailed` if fetching fails.
-    /// - Throws: `HubSDKError.onboardingConfigurationFailed` if UI config creation fails.
-    @MainActor
-    func onboardingController(
-        for placementId: String,
-        delegate: AdaptyOnboardingControllerDelegate,
-        locale: String?
-    ) async throws -> AdaptyOnboardingController
-    
-    /// Creates an `AdaptyOnboardingController` with a closure-based action handler.
-    ///
-    /// Uses `OnboardingDelegateProxy` internally for simplified event handling.
-    /// **Important:** Retain the returned proxy — it acts as the delegate.
-    ///
-    /// - Parameters:
-    ///   - placementId: The placement identifier.
-    ///   - locale: Optional locale code.
-    ///   - placeholder: Optional closure providing a loading placeholder view.
-    ///   - onAction: Closure called for each onboarding action.
-    /// - Returns: A tuple of the controller and its delegate proxy.
-    /// - Throws: `HubSDKError.notInitialized` if SDK is not ready.
-    /// - Throws: `HubSDKError.onboardingFetchFailed` if fetching fails.
-    /// - Throws: `HubSDKError.onboardingConfigurationFailed` if UI config creation fails.
-    @MainActor
-    func onboardingController(
-        for placementId: String,
-        locale: String?,
-        placeholder: (@MainActor @Sendable () -> UIView?)?,
-        onAction: @MainActor @Sendable @escaping (OnboardingAction) -> Void
-    ) async throws -> (AdaptyOnboardingController, OnboardingDelegateProxy)
+    /// - Parameter flow: The flow being shown.
+    func logFlow(with flow: AdaptyFlow) async
     
     // MARK: Completion Handler Variants
     
@@ -281,7 +202,7 @@ public protocol HubSDKAdaptyProviding: Sendable {
     ///   - product: The product to purchase.
     ///   - completion: A closure called on the main thread with the result.
     func purchase(
-        with product: any AdaptyPaywallProduct,
+        with product: AdaptyPaywallProduct,
         completion: @MainActor @Sendable @escaping (Result<AdaptyPurchaseResult, Error>) -> Void
     )
     
@@ -307,20 +228,6 @@ public protocol HubSDKAdaptyProviding: Sendable {
         completion: @MainActor @Sendable @escaping (AccessEntry) -> Void
     )
     
-    /// Fetches an onboarding entry with a completion handler.
-    ///
-    /// This method provides callback-based API access for cases
-    /// where async/await is not available.
-    ///
-    /// - Parameters:
-    ///   - placementId: The placement identifier.
-    ///   - locale: Optional locale code. Defaults to SDK config's `languageCode`.
-    ///   - completion: A closure called on the main thread with the result.
-    func onboardingEntry(
-        for placementId: String,
-        locale: String?,
-        completion: @MainActor @Sendable @escaping (Result<OnboardingEntry, Error>) -> Void
-    )
 }
 
 // MARK: - Default Parameter Values
@@ -329,40 +236,15 @@ public extension HubSDKAdaptyProviding {
 
     // Purchase convenience overload with default trackEvent
 
-    func purchase(with product: any AdaptyPaywallProduct) async throws -> AdaptyPurchaseResult {
+    func purchase(with product: AdaptyPaywallProduct) async throws -> AdaptyPurchaseResult {
         try await purchase(with: product, trackEvent: true)
     }
 
-    // Onboarding convenience overloads with default locale
-    
-    func onboardingEntry(for placementId: String) async throws -> OnboardingEntry {
-        try await onboardingEntry(for: placementId, locale: nil)
+    // Deprecated pre-Flow naming
+
+    @available(*, deprecated, renamed: "logFlow(from:)")
+    func logPaywall(from placementId: String) async {
+        await logFlow(from: placementId)
     }
-    
-    func onboardingEntryForDefaultAudience(for placementId: String) async throws -> OnboardingEntry {
-        try await onboardingEntryForDefaultAudience(for: placementId, locale: nil)
-    }
-    
-    @MainActor
-    func onboardingController(
-        for placementId: String,
-        delegate: AdaptyOnboardingControllerDelegate
-    ) async throws -> AdaptyOnboardingController {
-        try await onboardingController(for: placementId, delegate: delegate, locale: nil)
-    }
-    
-    @MainActor
-    func onboardingController(
-        for placementId: String,
-        onAction: @MainActor @Sendable @escaping (OnboardingAction) -> Void
-    ) async throws -> (AdaptyOnboardingController, OnboardingDelegateProxy) {
-        try await onboardingController(for: placementId, locale: nil, placeholder: nil, onAction: onAction)
-    }
-    
-    func onboardingEntry(
-        for placementId: String,
-        completion: @MainActor @Sendable @escaping (Result<OnboardingEntry, Error>) -> Void
-    ) {
-        onboardingEntry(for: placementId, locale: nil, completion: completion)
-    }
+
 }

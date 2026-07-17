@@ -16,6 +16,10 @@ extension HubSDKAdapty: HubSDKAdaptyProviding {
     nonisolated public var hasActiveSubscription: Bool {
         cachedSnapshot.hasActiveSubscription
     }
+
+    nonisolated public var languageCode: String? {
+        cachedSnapshot.config?.languageCode
+    }
     
     // MARK: Subscription Validation
     
@@ -102,7 +106,7 @@ extension HubSDKAdapty: HubSDKAdaptyProviding {
     
     // MARK: Purchase Operations
     
-    public func purchase(with product: any AdaptyPaywallProduct, trackEvent: Bool) async throws -> AdaptyPurchaseResult {
+    public func purchase(with product: AdaptyPaywallProduct, trackEvent: Bool) async throws -> AdaptyPurchaseResult {
         let (config, _) = try ensureReady()
 
         do {
@@ -153,19 +157,19 @@ extension HubSDKAdapty: HubSDKAdaptyProviding {
     
     // MARK: Analytics
     
-    public func logPaywall(from placementId: String) async {
+    public func logFlow(from placementId: String) async {
         guard let (_, placementBag) = try? ensureReady(),
-              let paywall = placementBag.entry(for: placementId)?.paywall else {
+              let flow = placementBag.entry(for: placementId)?.flow else {
             HubSDKError.placementNotFound(placementId).log()
             return
         }
-        
-        await logPaywall(with: paywall)
+
+        await logFlow(with: flow)
     }
-    
-    public func logPaywall(with paywall: AdaptyPaywall) async {
+
+    public func logFlow(with flow: AdaptyFlow) async {
         do {
-            try await Adapty.logShowPaywall(paywall)
+            try await Adapty.logShowFlow(flow)
         } catch {
             HubSDKError.logPaywallFailed(error).log()
         }
@@ -196,7 +200,7 @@ extension HubSDKAdapty: HubSDKAdaptyProviding {
     }
     
     nonisolated public func purchase(
-        with product: any AdaptyPaywallProduct,
+        with product: AdaptyPaywallProduct,
         completion: @MainActor @Sendable @escaping (Result<AdaptyPurchaseResult, Error>) -> Void
     ) {
         Task {

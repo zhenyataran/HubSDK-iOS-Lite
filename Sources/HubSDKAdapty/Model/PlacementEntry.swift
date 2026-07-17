@@ -4,7 +4,7 @@ import Foundation
 public struct PlacementEntry: Sendable {
     public let placementId: String
     public let identifier: AdaptyPaywallViewType
-    public let paywall: AdaptyPaywall
+    public let flow: AdaptyFlow
     public let products: [AdaptyPaywallProduct]
     public let remoteConfigData: Data?
 }

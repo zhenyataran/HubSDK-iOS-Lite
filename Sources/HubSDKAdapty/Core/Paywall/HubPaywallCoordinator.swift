@@ -78,7 +78,7 @@ public final class HubPaywallCoordinator {
         case purchase(result: AdaptyPurchaseResult)
         
         /// A purchase failed with an error.
-        case purchaseFailed(product: any AdaptyPaywallProduct, error: Error)
+        case purchaseFailed(product: AdaptyPaywallProduct, error: Error)
         
         /// A restore completed.
         case restore(entry: AccessEntry)
@@ -228,7 +228,7 @@ public final class HubPaywallCoordinator {
         case .builder:
             try await showBuilderPaywall(entry: entry, from: viewController, config: config, assetsResolver: assetsResolver)
         case .local(let identifier):
-            await sdk.logPaywall(with: entry.paywall)
+            await sdk.logFlow(with: entry.flow)
             try showLocalPaywall(identifier: identifier, entry: entry, from: viewController, config: config, userInfo: userInfo)
         }
     }
@@ -241,8 +241,12 @@ public final class HubPaywallCoordinator {
         config: HubPaywallPresentConfiguration,
         assetsResolver: (any AdaptyAssetsResolver)?
     ) async throws {
-        let paywallConfig = try await AdaptyUI.getPaywallConfiguration(forPaywall: entry.paywall, assetsResolver: assetsResolver)
-        let controller = try AdaptyUI.paywallController(with: paywallConfig, delegate: self)
+        let flowConfig = try await AdaptyUI.getFlowConfiguration(
+            forFlow: entry.flow,
+            locale: sdk.languageCode,
+            assetsResolver: assetsResolver
+        )
+        let controller = try AdaptyUI.flowController(with: flowConfig, delegate: self)
         
         presentedViewController = controller
         presentViewController(controller, from: viewController, config: config)
@@ -351,7 +355,7 @@ public final class HubPaywallCoordinator {
     
     /// Processes a successful purchase result.
     /// Notifies local paywall UI, dispatches action, handles auto-close if needed.
-    private func handlePurchaseResult(_ result: AdaptyPurchaseResult, product: any AdaptyPaywallProduct) {
+    private func handlePurchaseResult(_ result: AdaptyPurchaseResult, product: AdaptyPaywallProduct) {
         localPaywallStateDelegate?.localPaywallDidFinishPurchase(result: result)
         dispatch(.purchase(result: result))
         
@@ -365,7 +369,7 @@ public final class HubPaywallCoordinator {
     
     /// Processes a purchase failure.
     /// Notifies local paywall UI and dispatches error action.
-    private func handlePurchaseFailure(product: any AdaptyPaywallProduct, error: Error) {
+    private func handlePurchaseFailure(product: AdaptyPaywallProduct, error: Error) {
         localPaywallStateDelegate?.localPaywallDidFailPurchase(error: error)
         dispatch(.purchaseFailed(product: product, error: error))
     }
@@ -391,12 +395,12 @@ public final class HubPaywallCoordinator {
     }
 }
 
-// MARK: - AdaptyPaywallControllerDelegate (Builder Paywalls)
+// MARK: - AdaptyFlowControllerDelegate (Builder Flows)
 
-extension HubPaywallCoordinator: AdaptyPaywallControllerDelegate {
-    
-    public func paywallController(
-        _ controller: AdaptyPaywallController,
+extension HubPaywallCoordinator: AdaptyFlowControllerDelegate {
+
+    public func flowController(
+        _ controller: AdaptyFlowController,
         didPerform action: AdaptyUI.Action
     ) {
         switch action {
@@ -404,24 +408,26 @@ extension HubPaywallCoordinator: AdaptyPaywallControllerDelegate {
             performDismiss()
             dispatch(.close)
             dispose()
-        case .openURL(let url):
+        case .openURL(let url, _):
             UIApplication.shared.open(url)
             dispatch(.openURL(url: url))
         case .custom:
             break
         }
     }
-    
-    public func paywallController(
-        _ controller: AdaptyPaywallController,
-        didFinishPurchase product: any AdaptyPaywallProduct,
+
+    /// In Adapty v4 there is no auto-dismiss after a successful purchase —
+    /// `handlePurchaseResult` applies the coordinator's `closeOnSuccess` policy.
+    public func flowController(
+        _ controller: AdaptyFlowController,
+        didFinishPurchase product: AdaptyPaywallProduct,
         purchaseResult: AdaptyPurchaseResult
     ) {
         handlePurchaseResult(purchaseResult, product: product)
     }
-    
-    public func paywallController(
-        _ controller: AdaptyPaywallController,
+
+    public func flowController(
+        _ controller: AdaptyFlowController,
         didFinishRestoreWith profile: AdaptyProfile
     ) {
         Task {
@@ -429,17 +435,17 @@ extension HubPaywallCoordinator: AdaptyPaywallControllerDelegate {
             handleRestoreSuccess(entry: entry)
         }
     }
-    
-    public func paywallController(
-        _ controller: AdaptyPaywallController,
-        didFailPurchase product: any AdaptyPaywallProduct,
+
+    public func flowController(
+        _ controller: AdaptyFlowController,
+        didFailPurchase product: AdaptyPaywallProduct,
         error: AdaptyError
     ) {
         handlePurchaseFailure(product: product, error: error)
     }
-    
-    public func paywallController(
-        _ controller: AdaptyPaywallController,
+
+    public func flowController(
+        _ controller: AdaptyFlowController,
         didFailRestoreWith error: AdaptyError
     ) {
         handleRestoreFailure(error: error)

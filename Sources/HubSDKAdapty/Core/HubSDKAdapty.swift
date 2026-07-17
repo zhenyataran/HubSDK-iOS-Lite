@@ -267,8 +267,8 @@ extension HubSDKAdapty: HubEventListener {
         switch event {
         case .conversionDataReceived(let id, let conversionData):
             Task {
-                try? await Adapty.setIntegrationIdentifier(key: "appsflyer_id", value: id)
-                try? await Adapty.updateAttribution(conversionData, source: "appsflyer")
+                try? await Adapty.setIntegrationIdentifier(.appsflyerId(id))
+                try? await Adapty.updateAttribution(conversionData, source: .appsflyer)
             }
         default:
             break

@@ -113,30 +113,34 @@ public final class PlacementBag: @unchecked Sendable {
         result.reserveCapacity(identifiers.count)
         
         for id in identifiers {
-            let paywall = try await Adapty.getPaywall(placementId: id, locale: locale)
-            let products = try await Adapty.getPaywallProducts(paywall: paywall)
-            let remoteConfigData = paywall.remoteConfig?.jsonString.data(using: .utf8)
-            
+            let flow = try await Adapty.getFlow(placementId: id)
+            let products = try await Adapty.getPaywallProducts(flow: flow)
+
+            // Flow carries per-locale remote configs; pick the requested locale, fall back to the first one.
+            let remoteConfig = flow.remoteConfigs.first { $0.locale.lowercased() == locale.lowercased() }
+                ?? flow.remoteConfigs.first
+            let remoteConfigData = remoteConfig?.jsonString.data(using: .utf8)
+
             let viewType: AdaptyPaywallViewType = {
-                if paywall.hasViewConfiguration {
+                if flow.hasViewConfiguration {
                     return .builder
                 }
-                
-                let identifier = (paywall.remoteConfig?.dictionary?["identifier"] as? String)
-                    ?? paywall.name.components(separatedBy: "-").first?.lowercased()
+
+                let identifier = (remoteConfig?.dictionary?["identifier"] as? String)
+                    ?? flow.name.components(separatedBy: "-").first?.lowercased()
                     ?? ""
-                
+
                 return .local(identifier)
             }()
-            
+
             let entry = PlacementEntry(
                 placementId: id,
                 identifier: viewType,
-                paywall: paywall,
+                flow: flow,
                 products: products,
                 remoteConfigData: remoteConfigData
             )
-            
+
             result.append(entry)
         }
         
